@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -34,10 +35,18 @@ func main() {
 
 	db := app.NewDB()
 
+	redisClient := app.NewRedis()
+	defer func() {
+		if err := redisClient.Close(); err != nil {
+			fmt.Println("Error closing Redis connection:", err)
+		}
+	}()
+
 	validate := validator.New()
 
 	patientMedicalRecordRepository := repository.NewpatientMedicalRecordRepository()
-	patientMedicalRecordService := service.NewpatientMedicalRecordService(patientMedicalRecordRepository, db, validate)
+	patientMedicalRecordCacheRepository := repository.NewPatientMedicalRecordCache(redisClient)
+	patientMedicalRecordService := service.NewpatientMedicalRecordService(patientMedicalRecordRepository, patientMedicalRecordCacheRepository, db, validate)
 	patientMedicalRecordController := controller.NewPatientMedicalRecordController(patientMedicalRecordService)
 
 	router := app.NewRouter(patientMedicalRecordController)
